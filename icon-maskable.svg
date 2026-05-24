@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1A1814"/>
+  <!-- Inner safe zone — keep crosshair within 80% to satisfy Android maskable spec -->
+  <circle cx="256" cy="240" r="104" fill="none" stroke="#F4EFE3" stroke-width="5" opacity="0.45"/>
+  <circle cx="256" cy="240" r="68" fill="none" stroke="#F4EFE3" stroke-width="4" opacity="0.55"/>
+  <circle cx="256" cy="240" r="34" fill="none" stroke="#F4EFE3" stroke-width="3" opacity="0.7"/>
+  <line x1="256" y1="120" x2="256" y2="144" stroke="#F4EFE3" stroke-width="5" opacity="0.7"/>
+  <line x1="256" y1="336" x2="256" y2="360" stroke="#F4EFE3" stroke-width="5" opacity="0.7"/>
+  <line x1="136" y1="240" x2="160" y2="240" stroke="#F4EFE3" stroke-width="5" opacity="0.7"/>
+  <line x1="352" y1="240" x2="376" y2="240" stroke="#F4EFE3" stroke-width="5" opacity="0.7"/>
+  <circle cx="256" cy="240" r="8" fill="#F4EFE3"/>
+  <text x="256" y="408" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="400" font-size="56" fill="#F4EFE3" text-anchor="middle">QD</text>
+</svg>

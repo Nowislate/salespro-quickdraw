@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1A1814"/>
+  <!-- Crosshair rings -->
+  <circle cx="256" cy="240" r="128" fill="none" stroke="#F4EFE3" stroke-width="6" opacity="0.45"/>
+  <circle cx="256" cy="240" r="84" fill="none" stroke="#F4EFE3" stroke-width="4" opacity="0.55"/>
+  <circle cx="256" cy="240" r="42" fill="none" stroke="#F4EFE3" stroke-width="3" opacity="0.7"/>
+  <!-- Crosshair tick marks -->
+  <line x1="256" y1="92" x2="256" y2="120" stroke="#F4EFE3" stroke-width="6" opacity="0.7"/>
+  <line x1="256" y1="360" x2="256" y2="388" stroke="#F4EFE3" stroke-width="6" opacity="0.7"/>
+  <line x1="108" y1="240" x2="136" y2="240" stroke="#F4EFE3" stroke-width="6" opacity="0.7"/>
+  <line x1="376" y1="240" x2="404" y2="240" stroke="#F4EFE3" stroke-width="6" opacity="0.7"/>
+  <!-- Center dot -->
+  <circle cx="256" cy="240" r="10" fill="#F4EFE3"/>
+  <!-- QD wordmark -->
+  <text x="256" y="445" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="400" font-size="68" fill="#F4EFE3" text-anchor="middle">QD</text>
+</svg>

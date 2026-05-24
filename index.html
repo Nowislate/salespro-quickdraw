@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>salespro-quickdraw</title>
+  <meta name="description" content="Sales-floor reference and trainer PWA. Edit data.js to brand it." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1A1814" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Quickdraw" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,16..72,400;0,16..72,600;1,16..72,400;1,16..72,600&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind config (must be BEFORE the CDN script) -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+            display: ['"Newsreader"', 'Georgia', 'serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Tailwind via Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React + Babel — SRI-pinned (sha384) for supply-chain integrity. See DEPLOY.md for hash regen. -->
+  <script crossorigin="anonymous" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin="anonymous" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script crossorigin="anonymous" integrity="sha384-AISI5AuDG6E8DeEiFMVB3rGQxhZt24OU0avMp+GMV64+tpnA3+Z6F5MT0f96iPva" src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+  <!-- Brand data — load BEFORE the main script. Fork the framework by editing data.js. -->
+  <script src="data.js"></script>
+  <script>
+    // Update title + apple-mobile-web-app-title from BRAND_META so the page tab
+    // and iOS home-screen label reflect whatever brand data.js defines.
+    (function () {
+      try {
+        var meta = window.BRAND_DATA && window.BRAND_DATA.BRAND_META;
+        if (!meta) return;
+        if (meta.htmlTitle) document.title = meta.htmlTitle;
+        var descEl = document.querySelector('meta[name="description"]');
+        if (descEl && meta.htmlDescription) descEl.setAttribute('content', meta.htmlDescription);
+        var appleEl = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (appleEl && meta.appleTitle) appleEl.setAttribute('content', meta.appleTitle);
+      } catch (e) { /* noop */ }
+    })();
+  </script>
+
+  <style>
+    html { background: #F4EFE3; }
+    body {
+      background: #F4EFE3;
+      color: #1A1814;
+      margin: 0;
+      font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    /* Hide horizontal scrollbar on chip strips */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    /* Pre-render placeholder */
+    .pre-render {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Newsreader', Georgia, serif;
+      font-style: italic;
+      color: #1A1814;
+      opacity: 0.4;
+      font-size: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="pre-render">Loading…</div>
+  </div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useMemo } = React;
+
+    // ============================================================
+    // INLINE LUCIDE ICONS — drop-in replacements for lucide-react
+    // SVG paths from lucide-icons/lucide (MIT License)
+    // ============================================================
+
+    function _Icon({ children, className = '', ...props }) {
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+          {...props}
+        >
+          {children}
+        </svg>
+      );
+    }
+
+    const Search = (p) => <_Icon {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></_Icon>;
+    const X = (p) => <_Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></_Icon>;
+    const AlertTriangle = (p) => <_Icon {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></_Icon>;
+    const Zap = (p) => <_Icon {...p}><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></_Icon>;
+    const Leaf = (p) => <_Icon {...p}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2.96c.5 2.34.8 5.06.5 7.48-.5 4.5-3 9.56-9.7 9.56z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></_Icon>;
+    const Mountain = (p) => <_Icon {...p}><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></_Icon>;
+    const Sparkles = (p) => <_Icon {...p}><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></_Icon>;
+    const ChevronDown = (p) => <_Icon {...p}><path d="m6 9 6 6 6-6"/></_Icon>;
+    const ChevronUp = (p) => <_Icon {...p}><path d="m18 15-6-6-6 6"/></_Icon>;
+    const ChevronRight = (p) => <_Icon {...p}><path d="m9 18 6-6-6-6"/></_Icon>;
+    const PkgIcon = (p) => <_Icon {...p}><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></_Icon>;
+
+    // ============================================================
+    // APP CODE
+    // ============================================================
+
+
+    // === Brand data ===
+    // All brand-specific data lives in data.js, loaded BEFORE this script tag.
+    // Fork the framework by editing data.js, not this file.
+    const {
+      BRAND_META,
+      LINEUP, PACKAGES, PACKAGE_COVERAGE, PAINT, TRIM_DETAIL, TRIM_DETAIL_SOURCE,
+      FLOOR_TRIAGE, TRAPS, STANDARDS,
+      TRAINER_DATA,
+    } = window.BRAND_DATA;
+
+    // localStorage namespacing — derived from data.js so forks get fresh state.
+    const STORAGE_PREFIX = (BRAND_META && BRAND_META.storagePrefix) || 'quickdraw';
+    const STORAGE_KEY_MODE          = `${STORAGE_PREFIX}-mode`;
+    const STORAGE_KEY_TRAINER_MODEL = `${STORAGE_PREFIX}-trainer-model`;
+    const trimKey = (modelId) => `${STORAGE_PREFIX}-trim-${modelId}`;
+
+    // Default trainer model = first model defined in data.js.
+    const DEFAULT_TRAINER_MODEL = Object.keys(TRAINER_DATA)[0];
+
+// ============================================================
+// PACKAGES — KEYED BY MODEL ID → TRIM NAME
+// Schema:
+//   code: short identifier (e.g., '11', '23')
+//   name: optional friendly name
+//   add: MSRP add ($) — null if unknown
+//   features: array of strings
+//   source: where the data came from (for verification)
+//   sample: true if placeholder — REMOVE when verified
+// NOTE: trims with "standard" package codes (no options to add) are
+// omitted from this list — brand-specific "standard" trim codes belong
+// in data.js comments alongside each trim, not here.
+// ============================================================
+
+
+// Models with populated package data — used for status display
+
+// ============================================================
+// PAINT — Premium paint options per model
+// All current premium paint additions are $395 MSRP
+// ============================================================
+
+
+// ============================================================
+// TRIM_DETAIL — Per-trim drill-down data
+// Tap a trim card to see this. Differential format: each trim
+// shows what it ADDS over the trim below. Premium shows full base.
+// ============================================================
+
+
+
+
+
+
+const QUICK_FILTERS = [
+  { id: 'turbo',     label: 'TURBO',      icon: Zap },
+  { id: 'hybrid',    label: 'HYBRID',     icon: Leaf },
+  { id: 'ev',        label: 'EV',         icon: null },
+  { id: 'wilderness',label: 'WILDERNESS', icon: Mountain },
+  { id: 'tow',       label: 'TOW 3,500+', icon: null },
+  { id: 'hands-free',label: 'HANDS-FREE', icon: null },
+  { id: '3-row',     label: '3-ROW',      icon: null },
+  { id: 'flag',      label: 'FLAGSHIPS',  icon: Sparkles },
+];
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+const fmtPrice = (n) => '$' + n.toLocaleString();
+const fmtAdd = (n) => n == null ? 'TBD' : '+$' + n.toLocaleString();
+
+const badgeColor = (b) => {
+  if (b === 'turbo')       return 'bg-[#A8631E]/10 text-[#A8631E] border-[#A8631E]/25';
+  if (b === 'hybrid')      return 'bg-[#3D6B47]/10 text-[#3D6B47] border-[#3D6B47]/25';
+  if (b === 'ev')          return 'bg-[#3B6E8F]/10 text-[#3B6E8F] border-[#3B6E8F]/25';
+  if (b === 'wilderness')  return 'bg-[#A8631E]/10 text-[#A8631E] border-[#A8631E]/25';
+  if (b === 'hands-free')  return 'bg-[#3B6E8F]/10 text-[#3B6E8F] border-[#3B6E8F]/25';
+  if (b === 'flag')        return 'bg-[#6B4A8F]/10 text-[#6B4A8F] border-[#6B4A8F]/25';
+  if (b === 'tow')         return 'bg-[#1A1814]/8 text-[#1A1814] border-[#1A1814]/25';
+  if (b === '3-row')       return 'bg-[#1A1814]/8 text-[#1A1814] border-[#1A1814]/25';
+  if (b === 'volume')      return 'bg-[#1A1814]/8 text-[#1A1814] border-[#1A1814]/25';
+  if (b === 'limited-run') return 'bg-[#A8631E]/10 text-[#A8631E] border-[#A8631E]/25';
+  return 'bg-[#1A1814]/8 text-[#1A1814] border-[#1A1814]/25';
+};
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
+function FloorRef() {
+  const [view, setView] = useState('trims'); // 'trims' | 'packages'
+  const [search, setSearch] = useState('');
+  const [activeModel, setActiveModel] = useState('all');
+  const [activeFilters, setActiveFilters] = useState([]);
+  const [showTriage, setShowTriage] = useState(true);
+  const [showTraps, setShowTraps] = useState(true);
+  const [showStandards, setShowStandards] = useState(false);
+  const [expandedTrim, setExpandedTrim] = useState(null); // { modelId, trimName } | null
+
+  const toggleFilter = (id) => {
+    setActiveFilters(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
+  };
+
+  const tokens = useMemo(
+    () => search.toLowerCase().split(/\s+/).filter(Boolean),
+    [search]
+  );
+
+  // ===== TRIMS VIEW DATA =====
+  const filteredTrims = useMemo(() => {
+    return LINEUP
+      .filter(m => activeModel === 'all' || m.id === activeModel)
+      .map(m => ({
+        ...m,
+        trims: m.trims.filter(t => {
+          if (activeFilters.length && !activeFilters.every(f => t.badges.includes(f))) return false;
+          if (!tokens.length) return true;
+          const hay = `${m.name} ${t.name} ${t.features} ${t.powertrain} ${t.badges.join(' ')}`.toLowerCase();
+          return tokens.every(tok => hay.includes(tok));
+        })
+      }))
+      .filter(m => m.trims.length > 0);
+  }, [tokens, activeModel, activeFilters]);
+
+  // ===== PACKAGES VIEW DATA =====
+  const filteredPackages = useMemo(() => {
+    return LINEUP
+      .filter(m => activeModel === 'all' || m.id === activeModel)
+      .map(m => {
+        const trimsWithPkgs = m.trims.map(t => {
+          const pkgs = (PACKAGES[m.id]?.[t.name] || []).filter(p => {
+            if (!tokens.length) return true;
+            const hay = `${m.name} ${t.name} ${p.code} ${p.name || ''} ${p.features.join(' ')}`.toLowerCase();
+            return tokens.every(tok => hay.includes(tok));
+          });
+          return { trim: t, pkgs };
+        }).filter(x => x.pkgs.length > 0);
+
+        // Paint: keep if matches search (or no search)
+        const rawPaint = PAINT[m.id];
+        let paint = null;
+        if (rawPaint) {
+          if (!tokens.length) {
+            paint = rawPaint;
+          } else {
+            const hay = `${m.name} paint ${rawPaint.colors.join(' ')}`.toLowerCase();
+            if (tokens.every(tok => hay.includes(tok))) paint = rawPaint;
+          }
+        }
+
+        return { ...m, trimsWithPkgs, paint };
+      })
+      .filter(m => m.trimsWithPkgs.length > 0 || m.paint);
+  }, [tokens, activeModel]);
+
+  const totalTrimMatches = filteredTrims.reduce((s, m) => s + m.trims.length, 0);
+  const totalPkgMatches = filteredPackages.reduce((s, m) => s + m.trimsWithPkgs.reduce((s2, t) => s2 + t.pkgs.length, 0), 0);
+  const totalPkgsLogged = Object.values(PACKAGES).reduce((s, m) => s + Object.values(m).reduce((s2, p) => s2 + p.length, 0), 0);
+
+  return (
+    <div className="min-h-screen bg-[#F4EFE3] text-[#1A1814] font-mono">
+      {/* HEADER */}
+      <header className="sticky z-20 bg-[#F4EFE3]/95 backdrop-blur border-b border-[#1A1814]" style={{ top: 'calc(2.5rem + env(safe-area-inset-top))' }}>
+        <div className="px-4 pt-4 pb-3">
+          <div className="flex items-start justify-between mb-1">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[#1A1814]/55 mb-0.5 font-mono">
+                {BRAND_META.floorEyebrow}
+              </div>
+              <h1
+                className="text-2xl leading-tight font-display tracking-tight"
+                dangerouslySetInnerHTML={{ __html: BRAND_META.floorHeadlineHTML }}
+              />
+              {/* floorHeadlineHTML is editor-authored static markup from data.js,
+                  not user input — XSS surface area is zero. */}
+            </div>
+            <div className="text-right text-[10px] uppercase tracking-[0.15em] text-[#1A1814]/55 leading-tight font-mono pt-1">
+              MSRP<br/>ONLY
+            </div>
+          </div>
+        </div>
+
+        {/* TAB NAV */}
+        <div className="px-4 pb-2 flex gap-1">
+          <FloorTabButton active={view === 'trims'} onClick={() => setView('trims')}>
+            TRIMS
+          </FloorTabButton>
+          <FloorTabButton active={view === 'packages'} onClick={() => setView('packages')}>
+            <PkgIcon className="w-3 h-3" />
+            PACKAGES
+          </FloorTabButton>
+        </div>
+
+        {/* SEARCH BAR */}
+        <div className="px-4 pb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1A1814]/55" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={view === 'trims' ? 'search trim, feature, price...' : 'search package code, feature...'}
+              className="w-full bg-[#EAE3D3] border border-[#1A1814]/15 rounded-md pl-9 pr-9 py-2.5 text-sm placeholder:text-[#1A1814]/40 focus:outline-none focus:border-[#A8631E]/40 focus:ring-1 focus:ring-amber-500/20"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[#1A1814]/55 hover:text-[#1A1814]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* MODEL CHIPS */}
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1.5 px-4 pb-3 w-max">
+            <ModelChip active={activeModel === 'all'} onClick={() => setActiveModel('all')}>
+              ALL
+            </ModelChip>
+            {LINEUP.map(m => (
+              <ModelChip
+                key={m.id}
+                active={activeModel === m.id}
+                onClick={() => setActiveModel(m.id)}
+              >
+                {m.name.toUpperCase()}
+              </ModelChip>
+            ))}
+          </div>
+        </div>
+
+        {/* QUICK FILTERS — only on trims view */}
+        {view === 'trims' && (
+          <div className="overflow-x-auto scrollbar-hide border-t border-[#1A1814]/8">
+            <div className="flex gap-1.5 px-4 py-2 w-max">
+              {QUICK_FILTERS.map(f => {
+                const active = activeFilters.includes(f.id);
+                const Icon = f.icon;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => toggleFilter(f.id)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold tracking-wider border transition-all ${
+                      active
+                        ? 'bg-[#A8631E]/15 text-[#A8631E] border-[#A8631E]/40'
+                        : 'bg-[#EAE3D3] text-[#1A1814]/55 border-[#1A1814]/15 hover:border-[#1A1814]/20'
+                    }`}
+                  >
+                    {Icon && <Icon className="w-3 h-3" />}
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* MATCH COUNT */}
+        <div className="px-4 py-1.5 bg-[#EAE3D3]/50 border-t border-[#1A1814]/8">
+          <span className="text-[10px] text-[#1A1814]/55 uppercase tracking-wider">
+            {view === 'trims'
+              ? `${totalTrimMatches} ${totalTrimMatches === 1 ? 'trim' : 'trims'} matched`
+              : `${totalPkgMatches} ${totalPkgMatches === 1 ? 'package' : 'packages'} matched · ${totalPkgsLogged} logged`}
+            {(activeFilters.length > 0 || search) && (
+              <button
+                onClick={() => { setActiveFilters([]); setSearch(''); }}
+                className="ml-2 text-[#A8631E] hover:text-[#A8631E]"
+              >
+                · clear
+              </button>
+            )}
+          </span>
+        </div>
+      </header>
+
+      {/* COVERAGE STATUS BANNER — packages tab only */}
+      {view === 'packages' && (
+        <div className="mx-4 mt-4 bg-[#EAE3D3]/60 border border-[#1A1814]/15 rounded p-3">
+          <div className="flex gap-2 items-start">
+            <AlertTriangle className="w-4 h-4 text-[#A8631E] flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-[#1A1814] text-[11px] font-bold uppercase tracking-wider mb-2">{BRAND_META.packageCoverageHeader || 'Package coverage'}</div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {Object.entries(PACKAGE_COVERAGE).map(([id, status]) => {
+                  const model = LINEUP.find(m => m.id === id);
+                  const dot =
+                    status === 'complete' ? 'bg-[#3D6B47]' :
+                    status === 'partial'  ? 'bg-[#A8631E]' :
+                    status === 'none'     ? 'bg-[#1A1814]/30' :
+                                            'bg-[#9C2A2A]';
+                  const label =
+                    status === 'complete' ? 'verified' :
+                    status === 'partial'  ? 'partial' :
+                    status === 'none'     ? 'no options' :
+                                            'needed';
+                  return (
+                    <div key={id} className="flex items-center gap-1.5 text-[10px]">
+                      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                      <span className="text-[#1A1814] font-bold">{model?.name}</span>
+                      <span className="text-[#1A1814]/55 uppercase tracking-wider">{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-[#1A1814]/55 mt-2 leading-snug">
+                {BRAND_META.legalDisclaimer}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESULTS */}
+      <main className="px-4 py-4 pb-32 space-y-6">
+
+        {/* ============ TRIMS VIEW ============ */}
+        {view === 'trims' && (
+          <>
+            {filteredTrims.length === 0 && (
+              <div className="text-center py-12 text-[#1A1814]/55 text-sm">
+                no trims match. try clearing filters.
+              </div>
+            )}
+
+            {filteredTrims.map(model => (
+              <section key={model.id}>
+                <div className="mb-2">
+                  <div className="flex items-baseline gap-2">
+                    <h2 className="text-lg font-bold text-[#1A1814] tracking-tight">{model.name}</h2>
+                    <span className="text-[10px] text-[#1A1814]/55 uppercase tracking-wider">{model.segment}</span>
+                  </div>
+                  <p className="text-[11px] text-[#1A1814]/55 leading-snug mt-1">{model.note}</p>
+                </div>
+
+                <div className="space-y-2">
+                  {model.trims.map(trim => {
+                    const hasDetail = !!(TRIM_DETAIL[model.id]?.[trim.name]);
+                    return (
+                      <TrimCard
+                        key={trim.name}
+                        trim={trim}
+                        hasDetail={hasDetail}
+                        onClick={() => setExpandedTrim({ modelId: model.id, trimName: trim.name })}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
+
+        {/* ============ PACKAGES VIEW ============ */}
+        {view === 'packages' && (
+          <>
+            {filteredPackages.length === 0 && (
+              <div className="text-center py-12 text-[#1A1814]/55 text-sm">
+                {totalPkgsLogged === 0
+                  ? 'no packages logged yet. paste the order guide.'
+                  : 'no packages match. try clearing filters.'}
+              </div>
+            )}
+
+            {filteredPackages.map(model => (
+              <section key={model.id}>
+                <div className="mb-3">
+                  <h2 className="text-lg font-bold text-[#1A1814] tracking-tight">{model.name}</h2>
+                  <span className="text-[10px] text-[#1A1814]/55 uppercase tracking-wider">{model.segment}</span>
+                </div>
+
+                {model.paint && <PaintCard paint={model.paint} />}
+
+                <div className="space-y-4">
+                  {model.trimsWithPkgs.map(({ trim, pkgs }) => (
+                    <div key={trim.name}>
+                      <div className="flex items-baseline justify-between mb-2 border-b border-[#1A1814]/15 pb-1">
+                        <h3 className="text-[#1A1814] font-bold text-sm">{trim.name}</h3>
+                        <span className="text-[10px] text-[#1A1814]/55">base {fmtPrice(trim.msrp)}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {pkgs.map((p, i) => (
+                          <PackageCard key={i} pkg={p} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
+
+        {/* FLOOR TRIAGE */}
+        <CollapseSection
+          title="Floor Triage"
+          subtitle="customer cue → walk them to"
+          open={showTriage}
+          onToggle={() => setShowTriage(!showTriage)}
+        >
+          <div className="space-y-2">
+            {FLOOR_TRIAGE.map((t, i) => (
+              <div key={i} className="bg-[#EAE3D3]/60 border border-[#1A1814]/15 rounded p-2.5">
+                <div className="text-[#A8631E] text-[11px] uppercase tracking-wider font-bold">"{t.cue}"</div>
+                <div className="text-xs text-[#1A1814] mt-1 leading-snug">→ {t.walk}</div>
+              </div>
+            ))}
+          </div>
+        </CollapseSection>
+
+        {/* TRAPS */}
+        <CollapseSection
+          title="Traps"
+          subtitle="don't lose the deal on these"
+          icon={AlertTriangle}
+          accent="red"
+          open={showTraps}
+          onToggle={() => setShowTraps(!showTraps)}
+        >
+          <div className="space-y-2">
+            {TRAPS.map((t, i) => (
+              <div key={i} className="bg-[#9C2A2A]/8 border border-[#9C2A2A]/30 rounded p-2.5">
+                <div className="text-[#9C2A2A] text-[11px] uppercase tracking-wider font-bold">⚠ {t.title}</div>
+                <div className="text-xs text-[#1A1814] mt-1 leading-snug">{t.detail}</div>
+              </div>
+            ))}
+          </div>
+        </CollapseSection>
+
+        {/* STANDARDS */}
+        <CollapseSection
+          title={`Standard Across ${BRAND_META.modelYear}`}
+          subtitle={BRAND_META.standardsSubtitle || 'every model on the lot'}
+          open={showStandards}
+          onToggle={() => setShowStandards(!showStandards)}
+        >
+          <ul className="space-y-1.5">
+            {STANDARDS.map((s, i) => (
+              <li key={i} className="text-xs text-[#1A1814] leading-snug flex gap-2">
+                <span className="text-[#1A1814]/40">·</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </CollapseSection>
+
+        <footer className="pt-6 pb-2 text-center">
+          <p className="text-[10px] text-[#1A1814]/40 uppercase tracking-wider leading-relaxed">
+            Verify VIN-level pricing in CRM before quoting<br/>
+            D&D not included · Prepared for Lane Campbell
+          </p>
+        </footer>
+      </main>
+
+      {/* TRIM DETAIL SHEET */}
+      {expandedTrim && (
+        <TrimDetailSheet
+          modelId={expandedTrim.modelId}
+          trimName={expandedTrim.trimName}
+          onClose={() => setExpandedTrim(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// SUB-COMPONENTS
+// ============================================================
+
+function FloorTabButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-4 py-2 rounded-t-md text-xs font-bold tracking-wider border-b-2 transition-all ${
+        active
+          ? 'text-[#A8631E] border-[#A8631E] bg-[#EAE3D3]/60'
+          : 'text-[#1A1814]/55 border-transparent hover:text-[#1A1814]'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ModelChip({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded text-[11px] font-bold tracking-wider border whitespace-nowrap transition-all ${
+        active
+          ? 'bg-[#1A1814] text-[#F4EFE3] border-[#1A1814]'
+          : 'bg-[#EAE3D3] text-[#1A1814]/70 border-[#1A1814]/15 hover:border-[#1A1814]/20'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TrimCard({ trim, hasDetail, onClick }) {
+  const Tag = hasDetail ? 'button' : 'div';
+  return (
+    <Tag
+      onClick={hasDetail ? onClick : undefined}
+      className={`w-full text-left bg-[#EAE3D3]/60 border border-[#1A1814]/15 rounded-md p-3 transition-colors ${
+        hasDetail ? 'hover:border-[#A8631E]/30 active:bg-[#EAE3D3] cursor-pointer' : ''
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h3 className="text-[#1A1814] font-bold text-sm leading-tight truncate">{trim.name}</h3>
+          {hasDetail && <ChevronRight className="w-3 h-3 text-[#A8631E]/60 flex-shrink-0" />}
+        </div>
+        <span className="text-[#A8631E] font-bold text-sm tabular-nums whitespace-nowrap">{fmtPrice(trim.msrp)}</span>
+      </div>
+      <p className="text-[11px] text-[#1A1814]/70 leading-snug">{trim.features}</p>
+      {trim.badges.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {trim.badges.map(b => (
+            <span
+              key={b}
+              className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border ${badgeColor(b)}`}
+            >
+              {b === 'flag' ? 'FLAGSHIP' : b === '3-row' ? '3-ROW' : b === 'hands-free' ? 'HANDS-FREE' : b === 'limited-run' ? 'LTD RUN' : b.toUpperCase()}
+            </span>
+          ))}
+        </div>
+      )}
+    </Tag>
+  );
+}
+
+function PackageCard({ pkg }) {
+  const isSample = pkg.sample;
+  return (
+    <div className={`rounded-md p-3 border ${
+      isSample
+        ? 'bg-[#A8631E]/8 border-[#A8631E]/25'
+        : 'bg-[#EAE3D3]/60 border-[#1A1814]/15'
+    }`}>
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <div className="flex items-baseline gap-2">
+          <span className={`font-bold text-sm tabular-nums ${isSample ? 'text-[#A8631E]' : 'text-[#1A1814]'}`}>
+            PKG {pkg.code}
+          </span>
+          {pkg.name && (
+            <span className="text-[11px] text-[#1A1814]/70">{pkg.name}</span>
+          )}
+        </div>
+        <span className={`font-bold text-sm tabular-nums whitespace-nowrap ${isSample ? 'text-[#1A1814]/55' : 'text-[#A8631E]'}`}>
+          {fmtAdd(pkg.add)}
+        </span>
+      </div>
+      {isSample && (
+        <div className="text-[9px] uppercase tracking-wider text-[#A8631E]/70 font-bold mb-1.5">
+          ⚠ SAMPLE — verify before quoting
+        </div>
+      )}
+      <ul className="space-y-0.5">
+        {pkg.features.map((f, i) => (
+          <li key={i} className="text-[11px] text-[#1A1814] leading-snug flex gap-1.5">
+            <span className="text-[#1A1814]/40">·</span>
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+      {pkg.source && !isSample && (
+        <div className="text-[9px] uppercase tracking-wider text-[#1A1814]/40 mt-2 pt-2 border-t border-[#1A1814]/10">
+          source: {pkg.source}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PaintCard({ paint }) {
+  const isStandard = paint.add === 0;
+  return (
+    <div className="rounded-md p-3 border border-[#6B4A8F]/25 bg-[#6B4A8F]/8 mb-4">
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <span className="font-bold text-sm tracking-wider text-[#6B4A8F]">
+          {isStandard ? 'EXTERIOR COLORS' : 'PREMIUM PAINT'}
+        </span>
+        <span className={`font-bold text-sm tabular-nums whitespace-nowrap ${isStandard ? 'text-[#3D6B47]' : 'text-[#A8631E]'}`}>
+          {isStandard ? 'ALL STD' : fmtAdd(paint.add)}
+        </span>
+      </div>
+      {paint.note && (
+        <div className="text-[10px] uppercase tracking-wider text-[#6B4A8F]/70 font-bold mb-1.5">
+          {paint.note}
+        </div>
+      )}
+      <ul className="space-y-0.5">
+        {paint.colors.map((c, i) => (
+          <li key={i} className="text-[11px] text-[#1A1814] leading-snug flex gap-1.5">
+            <span className="text-[#1A1814]/40">·</span>
+            <span>{c}</span>
+          </li>
+        ))}
+      </ul>
+      {paint.source && (
+        <div className="text-[9px] uppercase tracking-wider text-[#1A1814]/40 mt-2 pt-2 border-t border-[#1A1814]/10">
+          source: {paint.source}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollapseSection({ title, subtitle, icon: Icon, accent, open, onToggle, children }) {
+  const accentColor = accent === 'red' ? 'text-[#9C2A2A]' : 'text-[#A8631E]';
+  return (
+    <section className="border-t border-[#1A1814]/15 pt-4">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between mb-3"
+      >
+        <div className="flex items-baseline gap-2">
+          {Icon && <Icon className={`w-3.5 h-3.5 ${accentColor} self-center`} />}
+          <h2 className={`text-sm font-bold tracking-tight ${accentColor}`}>{title}</h2>
+          <span className="text-[10px] text-[#1A1814]/55 uppercase tracking-wider">{subtitle}</span>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-[#1A1814]/55" /> : <ChevronDown className="w-4 h-4 text-[#1A1814]/55" />}
+      </button>
+      {open && children}
+    </section>
+  );
+}
+
+function TrimDetailSheet({ modelId, trimName, onClose }) {
+  const model = LINEUP.find(m => m.id === modelId);
+  const trim = model?.trims.find(t => t.name === trimName);
+  const detail = TRIM_DETAIL[modelId]?.[trimName];
+  const paint = PAINT[modelId];
+  const packages = PACKAGES[modelId]?.[trimName] || [];
+
+  if (!model || !trim || !detail) return null;
+
+  const audio = detail.audio;
+  const audioIsObj = audio && typeof audio === 'object';
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#F4EFE3] text-[#1A1814] font-mono overflow-y-auto">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-[#F4EFE3]/95 backdrop-blur border-b border-[#1A1814]/15 px-4 py-3 flex items-start justify-between gap-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-wider text-[#1A1814]/55">{model.name} · {model.segment}</div>
+          <h1 className="text-[#A8631E] font-bold tracking-tight text-lg leading-tight mt-0.5">{trimName}</h1>
+          <div className="text-[#A8631E] text-sm font-bold tabular-nums mt-0.5">{fmtPrice(trim.msrp)} <span className="text-[#1A1814]/55 font-normal">MSRP</span></div>
+          {detail.addsFrom && (
+            <div className="text-[10px] text-[#1A1814]/55 uppercase tracking-wider mt-1">upgrades from {detail.addsFrom}</div>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="flex-shrink-0 p-2 -m-2 text-[#1A1814]/70 hover:text-[#1A1814]"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="px-4 py-4 space-y-5 pb-24">
+        {/* CONFIGS */}
+        {detail.configs && (
+          <DetailSection title="Configurations">
+            <ul className="space-y-1">
+              {detail.configs.map((c, i) => (
+                <li key={i} className="text-xs text-[#1A1814] flex gap-2">
+                  <span className="text-[#1A1814]/40">·</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+            {detail.configNote && (
+              <p className="text-[11px] text-[#1A1814]/55 mt-2 leading-snug italic">{detail.configNote}</p>
+            )}
+          </DetailSection>
+        )}
+
+        {/* AUDIO */}
+        {audio && (
+          <DetailSection title="Audio" accent="sky">
+            {audioIsObj ? (
+              <div className="space-y-1.5">
+                <div className="text-sm text-[#1A1814] font-bold">{audio.system}</div>
+                <div className="flex flex-wrap gap-3 text-[11px] text-[#1A1814]">
+                  <span>{audio.speakers} speakers</span>
+                  {audio.brand && <span className="text-[#3B6E8F]">{audio.brand}</span>}
+                  {audio.wattage && <span>{audio.wattage}W amp</span>}
+                  {audio.navigation && <span className="text-[#3D6B47]">Nav STD</span>}
+                </div>
+                <div className="text-[11px] text-[#1A1814]/70">SiriusXM: {audio.sxm}</div>
+              </div>
+            ) : (
+              <div className="text-sm text-[#1A1814]">{audio}</div>
+            )}
+          </DetailSection>
+        )}
+
+        {/* KEY ADDS (upgrade trims) */}
+        {detail.keyAdds && (
+          <DetailSection title={`Key adds over ${detail.addsFrom}`} accent="amber">
+            <ul className="space-y-1">
+              {detail.keyAdds.map((f, i) => (
+                <li key={i} className="text-xs text-[#1A1814] leading-snug flex gap-2">
+                  <span className="text-[#A8631E]/60">+</span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </DetailSection>
+        )}
+
+        {/* KEY STANDARD (base trim) */}
+        {detail.keyStandard && (
+          <DetailSection title="Key standard equipment">
+            <ul className="space-y-1">
+              {detail.keyStandard.map((f, i) => (
+                <li key={i} className="text-xs text-[#1A1814] leading-snug flex gap-2">
+                  <span className="text-[#1A1814]/40">·</span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </DetailSection>
+        )}
+
+        {/* NEW FOR 2026 */}
+        {detail.newFor2026 && detail.newFor2026.length > 0 && (
+          <DetailSection title="New for 2026" accent="emerald">
+            <ul className="space-y-1">
+              {detail.newFor2026.map((f, i) => (
+                <li key={i} className="text-xs text-[#1A1814] leading-snug flex gap-2">
+                  <span className="text-[#3D6B47]/70">★</span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </DetailSection>
+        )}
+
+        {/* COLORS */}
+        <DetailSection title="Colors" accent="violet">
+          <div className="space-y-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-[#1A1814]/55 mb-1">Exterior</div>
+              {paint && paint.add === 0 && (
+                <div className="text-[11px] text-[#3D6B47] mb-1">All standard · no upcharge</div>
+              )}
+              {detail.exteriorColors && (
+                <ul className="space-y-0.5">
+                  {detail.exteriorColors.map((c, i) => (
+                    <li key={i} className="text-[11px] text-[#1A1814] leading-snug flex gap-2">
+                      <span className="text-[#1A1814]/40">·</span>
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {detail.colorNote && (
+                <div className="text-[10px] text-[#A8631E]/80 mt-2 leading-snug">⚠ {detail.colorNote}</div>
+              )}
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-[#1A1814]/55 mb-1">Interior</div>
+              <ul className="space-y-0.5">
+                {detail.interior.map((c, i) => (
+                  <li key={i} className="text-[11px] text-[#1A1814] leading-snug flex gap-2">
+                    <span className="text-[#1A1814]/40">·</span>
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </DetailSection>
+
+        {/* AVAILABLE PACKAGES */}
+        {packages.length > 0 && (
+          <DetailSection title="Available packages" accent="amber">
+            <div className="space-y-2">
+              {packages.map((p, i) => (
+                <div key={i} className="bg-[#EAE3D3]/60 border border-[#1A1814]/15 rounded p-2.5">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="font-bold text-xs text-[#1A1814]">PKG {p.code}</span>
+                    <span className="font-bold text-xs text-[#A8631E] tabular-nums">{fmtAdd(p.add)}</span>
+                  </div>
+                  <div className="text-[10px] text-[#1A1814]/70 leading-snug">{p.features.join(' · ')}</div>
+                </div>
+              ))}
+            </div>
+          </DetailSection>
+        )}
+
+        <div className="text-[9px] uppercase tracking-wider text-[#1A1814]/40 pt-3 border-t border-[#1A1814]/10">
+          source: {TRIM_DETAIL_SOURCE}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({ title, accent, children }) {
+  const accentColor =
+    accent === 'amber'   ? 'text-[#A8631E]' :
+    accent === 'emerald' ? 'text-[#3D6B47]' :
+    accent === 'violet'  ? 'text-[#6B4A8F]' :
+    accent === 'sky'     ? 'text-[#3B6E8F]' :
+                           'text-[#1A1814]';
+  return (
+    <section>
+      <h2 className={`text-[11px] font-bold tracking-wider uppercase mb-2 ${accentColor}`}>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+// ============================================================
+// ============================================================
+// TRAINER MODE — Multi-model "Top 5 by Trim" content
+// Each model entry: { name, segment, trims: [...] }
+// `trims: []` means content not yet built — Trainer renders a placeholder
+// pointing the user at Floor Ref (which always has full spec data).
+// Model priority order is defined by the consumer's BRAND_DATA.LINEUP.
+// ============================================================
+// ============================================================
+
+
+// ============================================================
+// TRAINER STYLES (local font-family shortcuts; not React state)
+// ============================================================
+const trainerDisplay = { fontFamily: '"Newsreader", Georgia, serif' };
+const trainerBody    = { fontFamily: '"DM Sans", system-ui, sans-serif' };
+const trainerMono    = { fontFamily: '"JetBrains Mono", ui-monospace, monospace' };
+
+// ============================================================
+// TRAINER SUB-COMPONENTS
+// ============================================================
+
+function SpecCell({ label, value, small }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-[0.18em] opacity-60 mb-0.5" style={trainerMono}>{label}</div>
+      <div className={small ? 'text-sm font-semibold' : 'text-base font-semibold'} style={trainerMono}>{value}</div>
+    </div>
+  );
+}
+
+function SectionHeader({ label, rightLabel }) {
+  return (
+    <div className="flex items-baseline justify-between mb-1 pb-2 border-b" style={{ borderColor: '#1A1814' }}>
+      <h2 className="text-xl" style={trainerDisplay}>{label}</h2>
+      {rightLabel && (
+        <span className="text-[10px] uppercase tracking-[0.15em] opacity-60 text-right" style={trainerMono}>{rightLabel}</span>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// TRAINER ROOT — Multi-model selector + per-model trim memory
+// localStorage keys (namespaced via BRAND_META.storagePrefix from data.js):
+//   <prefix>-trainer-model    — last selected model id
+//   <prefix>-trim-<modelId>   — last selected trim id per model
+// ============================================================
+function Trainer() {
+  const [activeModel, setActiveModel] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_TRAINER_MODEL);
+      return (saved && TRAINER_DATA[saved]) ? saved : DEFAULT_TRAINER_MODEL;
+    } catch { return DEFAULT_TRAINER_MODEL; }
+  });
+
+  const [activeTrimId, setActiveTrimId] = useState(() => {
+    try {
+      const savedModel = localStorage.getItem(STORAGE_KEY_TRAINER_MODEL);
+      const m = (savedModel && TRAINER_DATA[savedModel]) ? savedModel : DEFAULT_TRAINER_MODEL;
+      const trims = TRAINER_DATA[m]?.trims || [];
+      const saved = localStorage.getItem(trimKey(m));
+      if (saved && trims.some(t => t.id === saved)) return saved;
+      return trims[0]?.id || null;
+    } catch {
+      return TRAINER_DATA[DEFAULT_TRAINER_MODEL]?.trims[0]?.id || null;
+    }
+  });
+
+  const [activeCompIdx, setActiveCompIdx] = useState(0);
+
+  // Persist model
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY_TRAINER_MODEL, activeModel); } catch {}
+  }, [activeModel]);
+
+  // Persist trim under the active model's key
+  useEffect(() => {
+    if (activeTrimId) {
+      try { localStorage.setItem(trimKey(activeModel), activeTrimId); } catch {}
+    }
+  }, [activeModel, activeTrimId]);
+
+  // Model click: switch model AND restore that model's last trim (or fall back to first)
+  // Comp-idx reset happens synchronously inside the click handlers below so React 18's
+  // batching collapses model+trim+comp updates into one render — no one-frame H2H flash.
+  const onSelectModel = (modelId) => {
+    if (modelId === activeModel) return;
+    setActiveModel(modelId);
+    setActiveCompIdx(0);
+    const trims = TRAINER_DATA[modelId]?.trims || [];
+    let next = trims[0]?.id || null;
+    try {
+      const saved = localStorage.getItem(trimKey(modelId));
+      if (saved && trims.some(t => t.id === saved)) next = saved;
+    } catch {}
+    setActiveTrimId(next);
+  };
+
+  const onSelectTrim = (trimId) => {
+    if (trimId === activeTrimId) return;
+    setActiveTrimId(trimId);
+    setActiveCompIdx(0);
+  };
+
+  const model = TRAINER_DATA[activeModel] || TRAINER_DATA[BRAND_META.defaultModel] || Object.values(TRAINER_DATA)[0];
+  const hasContent = model.trims.length > 0;
+  const active = hasContent
+    ? (model.trims.find((t) => t.id === activeTrimId) || model.trims[0])
+    : null;
+  const activeComp = (active && active.comps && active.comps[activeCompIdx]) ? active.comps[activeCompIdx] : null;
+
+  return (
+    <div className="min-h-screen w-full" style={{ ...trainerBody, background: '#F4EFE3', color: '#1A1814' }}>
+      {/* HEADER */}
+      <div className="border-b sticky z-10 backdrop-blur" style={{ top: 'calc(2.5rem + env(safe-area-inset-top))', borderColor: '#1A1814', background: 'rgba(244, 239, 227, 0.92)' }}>
+        <div className="max-w-3xl mx-auto px-5 pt-6 pb-4">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.18em] opacity-60 mb-1" style={trainerMono}>
+                {BRAND_META.trainerEyebrow}
+              </div>
+              <h1 className="text-3xl md:text-4xl leading-[1.05]" style={trainerDisplay}>
+                {model.name}{' '}
+                <span style={{ ...trainerDisplay, fontStyle: 'italic', fontWeight: 400 }}>Top 5</span>{' '}
+                by Trim
+              </h1>
+            </div>
+            <div className="text-right text-[10px] uppercase tracking-[0.15em] opacity-60 leading-tight" style={trainerMono}>
+              2026<br />MY
+            </div>
+          </div>
+          <p className="text-sm leading-snug opacity-80 max-w-xl">
+            Trim-by-trim reasons to buy, with head-to-head against the top three competitors for each. Tap a competitor tab to switch. Verify VIN-level pricing in VinSolutions before quoting.
+          </p>
+
+          {/* MODEL SELECTOR */}
+          <div className="-mx-5 mt-5">
+            <div className="text-[9px] uppercase tracking-[0.22em] opacity-55 mb-1.5 px-5" style={trainerMono}>
+              Model
+            </div>
+            <div className="overflow-x-auto">
+              <div className="flex gap-1.5 px-5 pb-1">
+                {Object.entries(TRAINER_DATA).map(([id, m]) => {
+                  const isActive = id === activeModel;
+                  const pending = m.trims.length === 0;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => onSelectModel(id)}
+                      className="shrink-0 px-3 py-2 rounded text-xs uppercase tracking-wider transition-colors whitespace-nowrap border"
+                      style={{
+                        ...trainerMono,
+                        borderColor: pending && !isActive ? 'rgba(26,24,20,0.35)' : '#1A1814',
+                        background: isActive ? '#1A1814' : 'transparent',
+                        color: isActive ? '#F4EFE3' : '#1A1814',
+                        fontWeight: isActive ? 600 : 400,
+                        opacity: pending && !isActive ? 0.6 : 1,
+                      }}
+                    >
+                      {m.name}
+                      {pending && <span className="ml-2 opacity-70">· pending</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* TRIM SELECTOR — only when current model has trim content */}
+          {hasContent && (
+            <div className="-mx-5 mt-3">
+              <div className="text-[9px] uppercase tracking-[0.22em] opacity-55 mb-1.5 px-5" style={trainerMono}>
+                Trim
+              </div>
+              <div className="overflow-x-auto">
+                <div className="flex gap-1.5 px-5 pb-1">
+                  {model.trims.map((t) => {
+                    const isActive = t.id === activeTrimId;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => onSelectTrim(t.id)}
+                        className="shrink-0 px-3 py-2 rounded text-xs uppercase tracking-wider transition-colors whitespace-nowrap border"
+                        style={{
+                          ...trainerMono,
+                          borderColor: '#1A1814',
+                          background: isActive ? '#1A1814' : 'transparent',
+                          color: isActive ? '#F4EFE3' : '#1A1814',
+                          fontWeight: isActive ? 600 : 400,
+                        }}
+                      >
+                        {t.name}
+                        <span className="ml-2 opacity-60">{t.msrp}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* MAIN */}
+      <div className="max-w-3xl mx-auto px-5 py-7">
+
+        {/* PLACEHOLDER — model has no content yet */}
+        {!hasContent && (
+          <div className="rounded border p-6 mb-6" style={{ borderColor: '#1A1814', background: '#EAE3D3' }}>
+            <div className="text-[10px] uppercase tracking-[0.18em] opacity-60 mb-2" style={trainerMono}>
+              {model.name} · Trainer content in progress
+            </div>
+            <p className="text-lg leading-snug mb-3" style={{ ...trainerDisplay, fontStyle: 'italic' }}>
+              The "Top 5 + Head-to-Head + Say This" deep training for {model.name} hasn't been built yet.
+            </p>
+            <p className="text-sm leading-relaxed opacity-85 mb-4" style={{ maxWidth: '60ch' }}>
+              Floor Ref already has the full 2026 {model.name} lineup — trims, MSRPs, packages, paint, and trim-level drill-down sheets. Switch to <span style={{ ...trainerMono, fontWeight: 600 }}>Floor</span> in the top bar to pull spec data right now.
+            </p>
+            <div className="text-[10px] uppercase tracking-[0.15em] opacity-50 leading-relaxed pt-3 border-t" style={{ ...trainerMono, borderColor: 'rgba(26,24,20,0.2)' }}>
+              Segment: {model.segment}
+            </div>
+          </div>
+        )}
+
+        {/* FULL CONTENT — model has trims populated */}
+        {hasContent && active && (
+          <>
+            {/* SPEC STRIP */}
+            <div className="rounded border p-4 mb-6" style={{ borderColor: '#1A1814', background: '#EAE3D3' }}>
+              <div className="text-[10px] uppercase tracking-[0.18em] opacity-60 mb-1" style={trainerMono}>
+                {active.name} · Spec Strip
+              </div>
+              <p className="text-lg md:text-xl leading-snug mb-4" style={{ ...trainerDisplay, fontStyle: 'italic' }}>
+                {active.tagline}
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <SpecCell label="MSRP" value={active.msrp} />
+                <SpecCell label="Engine" value={active.engine} small />
+                <SpecCell label="Tow Max" value={active.tow} />
+                <SpecCell label="MPG city/hwy" value={active.mpg} />
+              </div>
+            </div>
+
+            {/* TOP 5 */}
+            <SectionHeader label="Top 5 Reasons to Buy" />
+            <div className="space-y-0 mb-8">
+              {active.reasons.map((r, i) => (
+                <div key={i} className="flex gap-4 py-4 border-t" style={{ borderColor: 'rgba(26,24,20,0.18)' }}>
+                  <div className="text-3xl leading-none w-8 shrink-0 opacity-50 pt-0.5" style={trainerDisplay}>
+                    {String(i + 1).padStart(2, '0')}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-base mb-1.5 leading-snug">{r.h}</h3>
+                    <p className="text-sm leading-relaxed opacity-85" style={{ maxWidth: '60ch' }}>
+                      {r.d}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* HEAD-TO-HEAD */}
+            {activeComp && <SectionHeader label="Head-to-Head" rightLabel={`vs ${activeComp.name}`} />}
+
+            {/* COMP TABS */}
+            <div className="flex gap-0 mb-4 mt-3 border-b" style={{ borderColor: 'rgba(26,24,20,0.2)' }}>
+              {active.comps.map((c, i) => {
+                const isActive = i === activeCompIdx;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActiveCompIdx(i)}
+                    className="flex-1 px-2 py-2.5 text-[10px] uppercase tracking-[0.12em] transition-all whitespace-nowrap"
+                    style={{
+                      ...trainerMono,
+                      color: isActive ? '#1A1814' : 'rgba(26,24,20,0.5)',
+                      fontWeight: isActive ? 600 : 400,
+                      borderBottom: isActive ? '2px solid #1A1814' : '2px solid transparent',
+                      marginBottom: '-1px',
+                    }}
+                  >
+                    {c.tab}
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeComp && (
+              <div className="rounded border mb-8 overflow-hidden" style={{ borderColor: '#1A1814' }}>
+                <div className="grid grid-cols-2 text-[10px] uppercase tracking-[0.15em]" style={trainerMono}>
+                  <div className="p-3 border-r border-b" style={{ borderColor: '#1A1814', background: '#1A1814', color: '#F4EFE3' }}>
+                    {model.name} {active.name} · {active.msrp}
+                  </div>
+                  <div className="p-3 border-b opacity-90" style={{ borderColor: '#1A1814', background: '#D9D2C0' }}>
+                    {activeComp.name} · {activeComp.price}
+                  </div>
+                </div>
+
+                <div className="p-4 border-b" style={{ borderColor: '#1A1814', background: '#EAE3D3' }}>
+                  <div className="text-[10px] uppercase tracking-[0.18em] mb-2 opacity-70" style={trainerMono}>
+                    ✓ {model.name} wins
+                  </div>
+                  <ul className="space-y-1.5">
+                    {activeComp.wins.map((w, i) => (
+                      <li key={i} className="text-sm leading-snug flex gap-2">
+                        <span className="opacity-50 shrink-0">·</span>
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="p-4">
+                  <div className="text-[10px] uppercase tracking-[0.18em] mb-2 opacity-70" style={trainerMono}>
+                    ⚠ Where {activeComp.name.split(' ').slice(-2).join(' ')} wins
+                  </div>
+                  <ul className="space-y-1.5">
+                    {activeComp.loses.map((l, i) => (
+                      <li key={i} className="text-sm leading-snug flex gap-2 opacity-75">
+                        <span className="opacity-50 shrink-0">·</span>
+                        <span>{l}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* SAY THIS */}
+            <div className="rounded p-5 mb-6" style={{ background: '#1A1814', color: '#F4EFE3' }}>
+              <div className="text-[10px] uppercase tracking-[0.18em] opacity-60 mb-2" style={trainerMono}>
+                💬 Say This
+              </div>
+              <p className="text-lg md:text-xl leading-snug" style={{ ...trainerDisplay, fontStyle: 'italic' }}>
+                "{active.say}"
+              </p>
+            </div>
+
+            {/* FOOTER */}
+            <div className="text-[10px] uppercase tracking-[0.15em] opacity-50 leading-relaxed pt-4 border-t" style={{ ...trainerMono, borderColor: 'rgba(26,24,20,0.2)' }}>
+              {BRAND_META.trainerFooter}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MODE BAR — 40px sticky strip at top of viewport
+// Left: brand. Right: two-button toggle styled like trim pills.
+// ============================================================
+function ModeBar({ mode, setMode }) {
+  const btn = (val, label) => {
+    const isActive = mode === val;
+    return (
+      <button
+        key={val}
+        onClick={() => setMode(val)}
+        className="px-3 py-1 rounded text-[10px] uppercase tracking-[0.18em] transition-colors whitespace-nowrap border"
+        style={{
+          fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+          borderColor: isActive ? '#1A1814' : 'rgba(26,24,20,0.25)',
+          background: isActive ? '#1A1814' : 'transparent',
+          color: isActive ? '#F4EFE3' : '#1A1814',
+          fontWeight: isActive ? 600 : 500,
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+  return (
+    <div
+      className="sticky top-0 z-30 border-b backdrop-blur"
+      style={{
+        borderColor: 'rgba(26,24,20,0.15)',
+        background: 'rgba(244,239,227,0.95)',
+        height: 'calc(40px + env(safe-area-inset-top))',
+        paddingTop: 'env(safe-area-inset-top)',
+      }}
+    >
+      <div className="h-full max-w-3xl mx-auto px-4 flex items-center justify-between gap-3">
+        <div
+          className="text-[10px] uppercase tracking-[0.22em] truncate"
+          style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', opacity: 0.75 }}
+        >
+          {BRAND_META.dealerName}
+        </div>
+        <div className="flex gap-1">
+          {btn('trainer', 'Trainer')}
+          {btn('floor', 'Floor')}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// APP ROOT — wraps both modes with persistence
+// localStorage key: <STORAGE_PREFIX>-mode. Default: trainer.
+// Uses display:none (not conditional render) so each mode keeps
+// its internal state when the user peeks at the other mode.
+// ============================================================
+function App() {
+  const [mode, setMode] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEY_MODE) || 'trainer'; }
+    catch { return 'trainer'; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY_MODE, mode); } catch {}
+  }, [mode]);
+
+  return (
+    <>
+      <ModeBar mode={mode} setMode={setMode} />
+      <div style={{ display: mode === 'floor' ? 'block' : 'none' }}>
+        <FloorRef />
+      </div>
+      <div style={{ display: mode === 'trainer' ? 'block' : 'none' }}>
+        <Trainer />
+      </div>
+    </>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function (err) {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
