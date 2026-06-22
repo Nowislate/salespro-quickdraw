@@ -2,7 +2,7 @@
 
 A phone-first sales reference PWA. Two modes: Floor (whole lineup at a glance) and Trainer (trim-by-trim Top 5, competitor head-to-head, Say This). Single HTML file. No build step. Edit one data file, drag the folder to Netlify Drop, you're live.
 
-**Demo:** <!-- TODO Lane: replace with permanent demo URL after Netlify deploy -->
+**Demo:** <https://salespro-quickdraw.netlify.app/>
 
 ## Maintenance posture
 
@@ -11,7 +11,7 @@ This is a side project from a working salesperson. I'll triage bugs that break d
 ## Quickstart (5 minutes)
 
 ```bash
-git clone https://github.com/lanecampbell/salespro-quickdraw.git
+git clone https://github.com/Nowislate/salespro-quickdraw.git
 cd salespro-quickdraw
 python3 -m http.server 8080
 ```
